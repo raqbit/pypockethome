@@ -5,21 +5,19 @@ A small proxy for reverse-engineering PocketHome communication.
 import asyncio
 import struct
 from asyncio import StreamReader, StreamWriter
-from collections.abc import Mapping
-from typing import Callable
-
 from binascii import hexlify
+from collections.abc import Callable, Mapping
 
-PORT = 8888
+PORT = 4000
 
-UPSTREAM_HOST = "192.168.0.112"
-UPSTREAM_PORT = 4000
+HUB_HOST = "192.168.0.112"
+HUB_PORT = 4000
 
 
 async def pipe(
-    reader: StreamReader,
-    writer: StreamWriter,
-    tap: Callable[[bytes], None] = lambda _: None,
+        reader: StreamReader,
+        writer: StreamWriter,
+        tap: Callable[[bytes], None] = lambda _: None,
 ) -> None:
     try:
         while not reader.at_eof():
@@ -31,48 +29,96 @@ async def pipe(
     finally:
         writer.close()
 
+JUMBO_MESSAGE_BIT = 0b00000001
 
-APP_TO_UPSTREAM: Mapping[int, str] = {
-    0x0003: "GetHardwareId",
-    0x0007: "SendTime",
-    0x0037: "GetDeviceWhichActivatedBoiler",
+APP_TO_HUB: Mapping[int, str] = {
+    0x0003: "GetHardwareIdMessage",
+    0x0007: "SendTimeMessage",
+    0x0037: "GetDeviceWhichActivatedBoilerMessage",
     0x7FFF: "MultiMessage",
-    0x8008: "GetBaseCounterTwoBytes",
-    0x8009: "GetProgramCounter",
-    0x800A: "GetConstantsCounter",
-    0x800B: "GetScenes",
-    0x802F: "GetUniqueNumberPh",
-    0x8031: "GetUsedRooms",
-    0x803A: "GetCentralSettings",
-    0x8041: "GetActualTemp",
-    0xD450: "GetPhType",
+    0x8008: "GetBaseCounterTwoBytesMessage",
+    0x8009: "GetProgramCounterMessage",
+    0x800A: "GetConstantsCounterMessage",
+    0x800B: "GetScenesMessage",
+    0x800D: "GetProgramMessage",
+    0x802F: "GetUniqueNumberPhMessage",
+    0x8031: "GetUsedRoomsMessage",
+    0x8033: "GetRoomMessage",
+    0x8034: "GetScenesLengthDevicesCount",
+    0x803A: "GetCentralSettingsMessage",
+    0x8041: "GetActualTempMessage",
+    0x8050: "GetDeviceDataMessage",
+    0xD450: "GetPhTypeMessage",
 }
 
+# The ID of responses either equal the ID of the request or have (positive) offset 0x8000
+HUB_TO_APP: Mapping[int, str] = {
+    # 0x8001: "CounterResponse", # Seems to only occur sometimes??
+    0x8003: "HardwareIdResponse",
+    0x8007: "TimeResponse",
+    0x8008: "BaseCounterTwoBytesResponse",
+    0x8009: "ProgramCounterResponse",
+    0x800A: "ConstantsCounterResponse",
+    0x800B: "ScenesCounterResponse",
+    0x800D: "ProgramResponse",
+    0x802f: "UniqueNumberPhResponse",
+    0x8037: "DeviceWhichActivatedBoilerResponse",
+    0x8031: "UsedRoomsResponse",
+    0x8033: "RoomResponse",
+    0x8034: "GetScenesLengthDevicesCount",
+    0x8041: "ActualTempResponse",
+    0x8050: "DeviceDataResponse",
+    0x803a: "CentralSettingsResponse",
+    0xD450: "PhTypeResponse",
+    0xFFFF: "MultiResponse",
+}
 
 def parse_app_message(data: bytes) -> (str, int, bytes, bytes):
     m_type, size = struct.unpack(">HH", data[:4])
-    m_type_str = APP_TO_UPSTREAM.get(m_type, f"{data[0]:02X}{data[1]:02X}")
+    m_type_str = APP_TO_HUB.get(m_type, f"{data[0]:02X}{data[1]:02X}")
     payload = data[4:4+size]
     remainder = data[4+size:]
     return m_type_str, size, payload, remainder
 
+def parse_hub_message(data: bytes) -> (str, int, int, bytes, bytes):
+    m_type, flags, size = struct.unpack(">HBB", data[:4])
 
-def tap_app_to_upstream(data: bytes) -> None:
+    if flags & JUMBO_MESSAGE_BIT:
+        size += 256
+
+    m_type_str = HUB_TO_APP.get(m_type, f"{data[0]:02X}{data[1]:02X}")
+    payload = data[4:4+size]
+    remainder = data[4+size:]
+    return m_type_str, flags, size, payload, remainder
+
+
+def tap_app_to_hub(data: bytes) -> None:
+    # TODO: `data` might not be a full packet, this should be handled correctly
     m_type, size, payload, _ = parse_app_message(data)
 
-    print(f"A->U: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
+    print(f"A->H: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
 
     if m_type == "MultiMessage":
         remainder = payload
         while True:
             m_type, size, payload, remainder = parse_app_message(remainder)
-            print(f"\tA->U: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
+            print(f"\tA->H: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
             if not remainder:
                 break
 
 
-def tap_upstream_to_app(data: bytes) -> None:
-    print("U->A: " + hexlify(data).decode("utf-8"))
+def tap_hub_to_app(data: bytes) -> None:
+    m_type, flags, size, payload, _ = parse_hub_message(data)
+
+    print(f"H->A: {m_type}{{{flags:08b}}}[{size}B] " + hexlify(payload).decode("utf-8"))
+
+    if m_type == "MultiResponse":
+        remainder = payload
+        while True:
+            m_type, flags, size, payload, remainder = parse_hub_message(remainder)
+            print(f"\tH->A: {m_type}{{{flags:08b}}}[{size}B] " + hexlify(payload).decode("utf-8"))
+            if not remainder:
+                break
 
 
 async def handle_connection(reader: StreamReader, writer: StreamWriter):
@@ -80,23 +126,22 @@ async def handle_connection(reader: StreamReader, writer: StreamWriter):
     print(f"New connection from [{host}]:{port}")
 
     try:
-        upstream_read, upstream_writer = await asyncio.open_connection(
-            UPSTREAM_HOST, UPSTREAM_PORT
-        )
+        hub_reader, hub_writer = await asyncio.open_connection(HUB_HOST, HUB_PORT)
     except OSError:
-        print("Could not connect to upstream")
+        print("Could not connect to hub")
         writer.close()
         return
 
-    pipe1 = pipe(reader, upstream_writer, tap=tap_app_to_upstream)
-    pipe2 = pipe(upstream_read, writer, tap=tap_upstream_to_app)
-    await asyncio.gather(pipe1, pipe2)
+    await asyncio.gather(
+        pipe(reader, hub_writer, tap=tap_app_to_hub),
+        pipe(hub_reader, writer, tap=tap_hub_to_app),
+    )
     print(f"Client [{host}]:{port} closed the connection")
 
 
 async def main():
     server = await asyncio.start_server(handle_connection, host="0.0.0.0", port=PORT)
-    print("Listening on :8888")
+    print(f"Listening on :{PORT}")
     await server.start_serving()
     await server.wait_closed()
 
