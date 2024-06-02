@@ -37,6 +37,7 @@ APP_TO_HUB: Mapping[int, str] = {
     0x0022: "UtClockManageMessage",
     0x0050: "SendDeviceDataMessage",
     0x0037: "GetDeviceWhichActivatedBoilerMessage",
+    0x003C: "SendVerifyServicePasswordMessage",
     0x35EA: "WifiModuleConfigurationStateSamsungMessage",
     0x3716: "GetCurrentDeviceConfigMessage",
     0x3722: "GetMacAddressMessage",
@@ -89,6 +90,7 @@ APP_TO_HUB: Mapping[int, str] = {
 
 # The ID of responses either equal the ID of the request or have (positive) offset 0x8000
 HUB_TO_APP: Mapping[int, str] = {
+    0x37DC: "OkResponse",
     # 0x8001: "CounterResponse", # Seems to only occur sometimes??
     0x8003: "HardwareIdResponse",
     0x8007: "TimeResponse",
