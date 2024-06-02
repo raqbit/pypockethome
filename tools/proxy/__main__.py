@@ -42,6 +42,7 @@ APP_TO_HUB: Mapping[int, str] = {
     0x3716: "GetCurrentDeviceConfigMessage",
     0x3722: "GetMacAddressMessage",
     0x378C: "GetApSSIDMessage",
+    0x4C52: "SendIsSummerModeMessage",
     0x7FFF: "MultiMessage",
     0x8007: "GetTimeMessage",
     0x8008: "GetBaseCounterTwoBytesMessage",
@@ -91,6 +92,7 @@ APP_TO_HUB: Mapping[int, str] = {
 # The ID of responses either equal the ID of the request or have (positive) offset 0x8000
 HUB_TO_APP: Mapping[int, str] = {
     0x37DC: "OkResponse",
+    0x3909: "DeviceIsNotRespondingToWifiModuleResponse",
     # 0x8001: "CounterResponse", # Seems to only occur sometimes??
     0x8003: "HardwareIdResponse",
     0x8007: "TimeResponse",
