@@ -1,20 +1,14 @@
 """ """
 
 import asyncio
+from contextlib import asynccontextmanager
+
+from ._connection import Connection
 
 
-class Connection:
-    _reader: asyncio.StreamReader
-    _writer: asyncio.StreamWriter
-
-    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        self._reader = reader
-        self._writer = writer
-
-
+@asynccontextmanager
 async def connect(
     host: str,
-    *,
     port: int,
 ) -> Connection:
     reader, writer = await asyncio.open_connection(
@@ -22,4 +16,15 @@ async def connect(
         port=port,
     )
 
-    return Connection(reader, writer)
+    connection = Connection(reader, writer)
+
+    try:
+        yield connection
+    finally:
+        connection.close()
+
+
+__all__ = [
+    "Connection",
+    "connect",
+]
