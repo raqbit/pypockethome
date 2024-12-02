@@ -15,9 +15,9 @@ HUB_PORT = 4000
 
 
 async def pipe(
-        reader: StreamReader,
-        writer: StreamWriter,
-        tap: Callable[[bytes], None] = lambda _: None,
+    reader: StreamReader,
+    writer: StreamWriter,
+    tap: Callable[[bytes], None] = lambda _: None,
 ) -> None:
     try:
         while not reader.at_eof():
@@ -28,6 +28,7 @@ async def pipe(
             writer.write(data)
     finally:
         writer.close()
+
 
 JUMBO_MESSAGE_BIT = 0b00000001
 
@@ -104,7 +105,7 @@ HUB_TO_APP: Mapping[int, str] = {
     0x800E: "HolidayStateResponse",
     0x8020: "EvenOddResponse",
     0x8022: "UtClockManageResponse",
-    0x802f: "UniqueNumberPhResponse",
+    0x802F: "UniqueNumberPhResponse",
     0x8037: "DeviceWhichActivatedBoilerResponse",
     0x8031: "UsedRoomsResponse",
     0x8033: "RoomResponse",
@@ -113,7 +114,7 @@ HUB_TO_APP: Mapping[int, str] = {
     0x803F: "DeviceControllingAlarmPairsResponse",
     0x8041: "ActualTempResponse",
     0x8050: "DeviceDataResponse",
-    0x803a: "CentralSettingsResponse",
+    0x803A: "CentralSettingsResponse",
     0xB5EA: "WifiModuleConfigurationStateSamsungResponse",
     0xB716: "GetCurrentDeviceConfigResponse",
     0xB722: "MacAddressResponse",
@@ -147,12 +148,14 @@ HUB_TO_APP: Mapping[int, str] = {
     0xFFFF: "MultiResponse",
 }
 
+
 def parse_app_message(data: bytes) -> (str, int, bytes, bytes):
     m_type, size = struct.unpack(">HH", data[:4])
     m_type_str = APP_TO_HUB.get(m_type, f"{data[0]:02X}{data[1]:02X}")
-    payload = data[4:4+size]
-    remainder = data[4+size:]
+    payload = data[4 : 4 + size]
+    remainder = data[4 + size :]
     return m_type_str, size, payload, remainder
+
 
 def parse_hub_message(data: bytes) -> (str, int, int, bytes, bytes):
     m_type, flags, size = struct.unpack(">HBB", data[:4])
@@ -161,8 +164,8 @@ def parse_hub_message(data: bytes) -> (str, int, int, bytes, bytes):
         size += 256
 
     m_type_str = HUB_TO_APP.get(m_type, f"{data[0]:02X}{data[1]:02X}")
-    payload = data[4:4+size]
-    remainder = data[4+size:]
+    payload = data[4 : 4 + size]
+    remainder = data[4 + size :]
     return m_type_str, flags, size, payload, remainder
 
 
@@ -190,7 +193,10 @@ def tap_hub_to_app(data: bytes) -> None:
         remainder = payload
         while True:
             m_type, flags, size, payload, remainder = parse_hub_message(remainder)
-            print(f"\tH->A: {m_type}{{{flags:08b}}}[{size}B] " + hexlify(payload).decode("utf-8"))
+            print(
+                f"\tH->A: {m_type}{{{flags:08b}}}[{size}B] "
+                + hexlify(payload).decode("utf-8")
+            )
             if not remainder:
                 break
 
