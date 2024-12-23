@@ -25,7 +25,7 @@ class Packet(abc.ABC):
         return _format_packet_repr(self.__class__.__name__, self.ID, self.__dict__)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class UnknownResponse:
     id_: int
     data: bytes
@@ -54,7 +54,7 @@ class GetApSSIDMessage(EmptyPacket, RequestPacket[UnknownResponse]):
     ID = 0x378C
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class UsedRoomsResponse(Packet):
     ID = 0x8031
 
@@ -81,7 +81,7 @@ class UsedRoomsResponse(Packet):
 class GetUsedRoomsMessage(EmptyPacket, RequestPacket[UsedRoomsResponse]):
     ID = 0x8031
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class RoomResponse(Packet):
     ID = 0x8033
 
