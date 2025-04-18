@@ -45,7 +45,6 @@ class EmptyPacket(Packet, ABC):
 
 class RequestPacket[R: Packet | UnknownResponse](Packet, ABC): ...
 
-
 class GetHardwareId(EmptyPacket, RequestPacket[UnknownResponse]):
     ID = 0x0003
 
@@ -53,6 +52,8 @@ class GetHardwareId(EmptyPacket, RequestPacket[UnknownResponse]):
 class GetApSSIDMessage(EmptyPacket, RequestPacket[UnknownResponse]):
     ID = 0x378C
 
+class WrongDataResponse(EmptyPacket):
+    ID = 0x37DD
 
 @dataclass(frozen=True, slots=True, repr=False)
 class UsedRoomsResponse(Packet):
@@ -94,6 +95,7 @@ class RoomResponse(Packet):
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> Self:
+        assert len(raw) == 17
         room, image_id = struct.unpack("!BB", raw[:2])
         return cls(room, image_id, str(raw[2:]))
 
@@ -114,4 +116,4 @@ class GetRoomMessage(RequestPacket[RoomResponse]):
 
 # TODO: Packets should have a client bound / server bound marker, and this should just be a list of all packets
 #   That way the proxy can also make use of this
-ALL_KNOWN_RESPONSE_PACKETS = [RoomResponse, UsedRoomsResponse]
+ALL_KNOWN_RESPONSE_PACKETS = [RoomResponse, UsedRoomsResponse, WrongDataResponse]
