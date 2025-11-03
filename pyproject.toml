@@ -7,7 +7,7 @@ name = "pypockethome"
 dynamic = ["version"]
 description = 'Python library for interfacing with the PocketHome system of climate control devices'
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = "Apache-2.0"
 keywords = []
 authors = [
@@ -25,6 +25,11 @@ dependencies = []
 Documentation = "https://github.com/Raqbit/pypockethome#readme"
 Issues = "https://github.com/Raqbit/pypockethome/issues"
 Source = "https://github.com/Raqbit/pypockethome"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0"
+]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -63,9 +68,4 @@ exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
-]
-
-[tool.uv]
-dev-dependencies = [
-    "mypy>=1.13.0",
 ]
