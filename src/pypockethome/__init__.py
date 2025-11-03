@@ -2,6 +2,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
 
 from ._connection import Connection
 
@@ -10,7 +11,7 @@ from ._connection import Connection
 async def connect(
     host: str,
     port: int,
-) -> Connection:
+) -> AsyncGenerator[Connection, Any]:
     reader, writer = await asyncio.open_connection(
         host=host,
         port=port,

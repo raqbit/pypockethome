@@ -1,13 +1,16 @@
 import abc
+import dataclasses
 import struct
 from abc import ABC
 from dataclasses import dataclass
 from typing import Self
 
-def _format_packet_repr(name: str, id_: int, attrs: dict[str, object]) -> str:
-    attrs = " ".join("{}={!r}".format(k, v) for k, v in attrs.items())
+
+def _format_packet_repr(name: str, id_: int, fields: dict[str, object]) -> str:
+    attrs = " ".join("{}={!r}".format(k, v) for k, v in fields.items())
     return f"<{name}(0x{id_:02X}) {attrs}>"
 
+@dataclass(frozen=True, slots=True, repr=False)
 class Packet(abc.ABC):
     @staticmethod
     @property
@@ -22,7 +25,7 @@ class Packet(abc.ABC):
     def to_bytes(self) -> bytes: ...
 
     def __repr__(self):
-        return _format_packet_repr(self.__class__.__name__, self.ID, self.__dict__)
+        return _format_packet_repr(self.__class__.__name__, self.ID, dataclasses.asdict(self))
 
 
 @dataclass(frozen=True, slots=True, repr=False)
