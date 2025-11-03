@@ -7,6 +7,9 @@ import struct
 from asyncio import StreamReader, StreamWriter
 from binascii import hexlify
 from collections.abc import Callable, Mapping
+from typing import Awaitable
+
+from .readers import RewindableReader, Reader, BytesReader
 
 PORT = 4000
 
@@ -17,15 +20,17 @@ HUB_PORT = 4000
 async def pipe(
     reader: StreamReader,
     writer: StreamWriter,
-    tap: Callable[[bytes], None] = lambda _: None,
+    tap: Callable[[Reader], Awaitable[None]] = lambda _: None,
 ) -> None:
+    rewindable = RewindableReader(reader)
     try:
         while not reader.at_eof():
-            data = await reader.read(1024)
-            if not data:
+            try:
+                await tap(rewindable)
+            except asyncio.IncompleteReadError:
                 break
-            tap(data)
-            writer.write(data)
+            read_data = rewindable.rewind()
+            writer.write(read_data)
     finally:
         writer.close()
 
@@ -149,56 +154,52 @@ HUB_TO_APP: Mapping[int, str] = {
 }
 
 
-def parse_app_message(data: bytes) -> (str, int, bytes, bytes):
-    m_type, size = struct.unpack(">HH", data[:4])
-    m_type_str = APP_TO_HUB.get(m_type, f"{data[0]:02X}{data[1]:02X}")
-    payload = data[4 : 4 + size]
-    remainder = data[4 + size :]
-    return m_type_str, size, payload, remainder
+async def parse_app_message(reader: Reader) -> tuple[str, int, bytes]:
+    header = await reader.read_exactly(4)
+    m_type, size = struct.unpack(">HH", header)
+    m_type_str = APP_TO_HUB.get(m_type, f"{header[0]:02X}{header[1]:02X}")
+    payload = await reader.read_exactly(size)
+    return m_type_str, size, payload
 
 
-def parse_hub_message(data: bytes) -> (str, int, int, bytes, bytes):
-    m_type, flags, size = struct.unpack(">HBB", data[:4])
+async def parse_hub_message(reader: Reader) -> tuple[str, int, int, bytes]:
+    header = await reader.read_exactly(4)
+
+    m_type, flags, size = struct.unpack(">HBB", header)
 
     if flags & JUMBO_MESSAGE_BIT:
         size += 256
 
-    m_type_str = HUB_TO_APP.get(m_type, f"{data[0]:02X}{data[1]:02X}")
-    payload = data[4 : 4 + size]
-    remainder = data[4 + size :]
-    return m_type_str, flags, size, payload, remainder
+    m_type_str = HUB_TO_APP.get(m_type, f"{header[0]:02X}{header[1]:02X}")
+    payload = await reader.read_exactly(size)
+    return m_type_str, flags, size, payload
 
 
-def tap_app_to_hub(data: bytes) -> None:
-    # TODO: `data` might not be a full packet, this should be handled correctly
-    m_type, size, payload, _ = parse_app_message(data)
+async def tap_app_to_hub(reader: Reader):
+    m_type, size, payload = await parse_app_message(reader)
 
     print(f"A->H: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
 
     if m_type == "MultiMessage":
-        remainder = payload
-        while True:
-            m_type, size, payload, remainder = parse_app_message(remainder)
+        payload_reader = BytesReader(payload)
+        while not payload_reader.at_eof():
+            m_type, size, payload = await parse_app_message(payload_reader)
             print(f"\tA->H: {m_type}[{size}B] " + hexlify(payload).decode("utf-8"))
-            if not remainder:
-                break
 
 
-def tap_hub_to_app(data: bytes) -> None:
-    m_type, flags, size, payload, _ = parse_hub_message(data)
+async def tap_hub_to_app(reader: Reader):
+    m_type, flags, size, payload = await parse_hub_message(reader)
 
     print(f"H->A: {m_type}{{{flags:08b}}}[{size}B] " + hexlify(payload).decode("utf-8"))
 
     if m_type == "MultiResponse":
-        remainder = payload
-        while True:
-            m_type, flags, size, payload, remainder = parse_hub_message(remainder)
+        payload_reader = BytesReader(payload)
+        while not payload_reader.at_eof():
+            m_type, flags, size, payload = await parse_hub_message(payload_reader)
             print(
                 f"\tH->A: {m_type}{{{flags:08b}}}[{size}B] "
                 + hexlify(payload).decode("utf-8")
             )
-            if not remainder:
-                break
 
 
 async def handle_connection(reader: StreamReader, writer: StreamWriter):
