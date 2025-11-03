@@ -4,18 +4,16 @@ import struct
 from abc import ABC
 from dataclasses import dataclass
 from typing import Self
+import abstractcp as acp
 
 
 def _format_packet_repr(name: str, id_: int, fields: dict[str, object]) -> str:
     attrs = " ".join("{}={!r}".format(k, v) for k, v in fields.items())
     return f"<{name}(0x{id_:02X}) {attrs}>"
 
-@dataclass(frozen=True, slots=True, repr=False)
-class Packet(abc.ABC):
-    @staticmethod
-    @property
-    @abc.abstractmethod
-    def ID(): ...
+
+class Packet(abc.ABC, acp.Abstract):
+    ID: int = acp.abstract_class_property(int)
 
     @classmethod
     @abc.abstractmethod
@@ -37,7 +35,7 @@ class UnknownResponse:
         return _format_packet_repr(self.__class__.__name__, self.id_, {"length": len(self.data)})
 
 
-class EmptyPacket(Packet, ABC):
+class EmptyPacket(Packet, ABC, acp.Abstract):
     def to_bytes(self) -> bytes:
         return bytes()
 
@@ -46,7 +44,7 @@ class EmptyPacket(Packet, ABC):
         return cls()
 
 
-class RequestPacket[R: Packet | UnknownResponse](Packet, ABC): ...
+class RequestPacket[R: Packet | UnknownResponse](Packet, ABC, acp.Abstract): ...
 
 class GetHardwareId(EmptyPacket, RequestPacket[UnknownResponse]):
     ID = 0x0003
@@ -100,7 +98,7 @@ class RoomResponse(Packet):
     def from_bytes(cls, raw: bytes) -> Self:
         assert len(raw) == 17
         room, image_id = struct.unpack("!BB", raw[:2])
-        return cls(room, image_id, str(raw[2:]))
+        return cls(room, image_id, str(raw[2:].replace(b"\x00", b" ")))
 
 
 @dataclass(frozen=True, slots=True)
