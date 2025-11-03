@@ -3,6 +3,15 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
+name = "abstractcp"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/1e/e6d512cb6550a364747fefa3acc9285a31463eb0158d3b78a5cff71549da/abstractcp-1.0.0.tar.gz", hash = "sha256:a7f7dcd54cdb17c3c9b0e3a31b2ec3848b5f932d387d72c09ac5abad7501c559", size = 8198, upload-time = "2024-05-20T07:59:38.392Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/36/d5690fad4b253054da94522e8e9722d9a9a451bc086b44205033a8a032d0/abstractcp-1.0.0-py3-none-any.whl", hash = "sha256:24fce39c06c8d815202600c7cd6409f10857864caca540ec595088bddc862187", size = 7304, upload-time = "2024-05-20T07:59:36.814Z" },
+]
+
+[[package]]
 name = "mypy"
 version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
@@ -32,6 +41,9 @@ wheels = [
 [[package]]
 name = "pypockethome"
 source = { editable = "." }
+dependencies = [
+    { name = "abstractcp" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -39,6 +51,7 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "abstractcp", specifier = "==1.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "mypy", specifier = ">=1.13.0" }]

@@ -19,7 +19,9 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
 ]
-dependencies = []
+dependencies = [
+    "abstractcp==1.0.0"
+]
 
 [project.urls]
 Documentation = "https://github.com/Raqbit/pypockethome#readme"

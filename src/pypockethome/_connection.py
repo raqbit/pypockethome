@@ -1,7 +1,7 @@
 import asyncio
 import struct
 from collections.abc import Mapping
-from typing import Iterable, Final, AsyncIterable
+from typing import Iterable, Final, AsyncIterable, cast
 
 from .packet import Packet, ALL_KNOWN_RESPONSE_PACKETS, UnknownResponse, RequestPacket
 
@@ -12,7 +12,7 @@ class Connection:
     _reader: asyncio.StreamReader
     _writer: asyncio.StreamWriter
 
-    _known_response_packets: Mapping[int, Packet]
+    _known_response_packets: Mapping[int, type[Packet]]
 
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self._reader = reader
@@ -22,10 +22,10 @@ class Connection:
             type_.ID: type_ for type_ in ALL_KNOWN_RESPONSE_PACKETS
         }
 
-    async def send_one[RT](self, packet: RequestPacket[RT]) -> RT | UnknownResponse:
-        return (await self.send([packet]))[0]
+    async def send_one[RT: Packet](self, packet: RequestPacket[RT]) -> RT | UnknownResponse:
+        return cast("RT", (await self.send([packet]))[0])
 
-    async def send[RT](self, packets: Iterable[RequestPacket[RT]]) -> list[RT | UnknownResponse]:
+    async def send(self, packets: Iterable[RequestPacket[Packet]]) -> list[Packet | UnknownResponse]:
         return [response async for response in self._send(packets)]
 
     async def _send(self, packets: Iterable[Packet]) -> AsyncIterable[Packet | UnknownResponse]:
