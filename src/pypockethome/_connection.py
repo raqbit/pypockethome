@@ -1,5 +1,6 @@
 import asyncio
 import struct
+import typing
 from collections.abc import Mapping
 from typing import Iterable, Final, AsyncIterable, cast
 
@@ -22,11 +23,32 @@ class Connection:
             type_.ID: type_ for type_ in ALL_KNOWN_RESPONSE_PACKETS
         }
 
-    async def send_one[RT: Packet](self, packet: RequestPacket[RT]) -> RT | UnknownResponse:
-        return cast("RT", (await self.send([packet]))[0])
+    @typing.overload
+    async def send[RT1: Packet, RT2: Packet, RT3: Packet](
+            self, pkt1: RequestPacket[RT1], pkt2: RequestPacket[RT2], pkt3: RequestPacket[RT3], /,
+    ) -> tuple[
+        RT1 | UnknownResponse,
+        RT2 | UnknownResponse,
+        RT3 | UnknownResponse
+    ]:
+        ...
 
-    async def send(self, packets: Iterable[RequestPacket[Packet]]) -> list[Packet | UnknownResponse]:
-        return [response async for response in self._send(packets)]
+    @typing.overload
+    async def send[RT1: Packet, RT2: Packet](self, pkt1: RequestPacket[RT1], pkt2: RequestPacket[RT2], /) -> tuple[
+        RT1 | UnknownResponse, RT2 | UnknownResponse
+    ]:
+        ...
+
+    @typing.overload
+    async def send[RT1: Packet](self, pkt1: RequestPacket[RT1], /) -> tuple[RT1 | UnknownResponse]:
+        ...
+
+    @typing.overload
+    async def send(self, *packets: RequestPacket[Packet]) -> tuple[Packet | UnknownResponse, ...]:
+        ...
+
+    async def send(self, *packets: RequestPacket[Packet]) -> tuple[Packet | UnknownResponse, ...]:
+        return tuple([response async for response in self._send(packets)])
 
     async def _send(self, packets: Iterable[Packet]) -> AsyncIterable[Packet | UnknownResponse]:
         for packet in packets:

@@ -117,4 +117,4 @@ class GetRoomMessage(RequestPacket[RoomResponse]):
 
 # TODO: Packets should have a client bound / server bound marker, and this should just be a list of all packets
 #   That way the proxy can also make use of this
-ALL_KNOWN_RESPONSE_PACKETS = [RoomResponse, UsedRoomsResponse, WrongDataResponse]
+ALL_KNOWN_RESPONSE_PACKETS: list[type[Packet]] = [RoomResponse, UsedRoomsResponse, WrongDataResponse]
