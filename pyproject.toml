@@ -30,7 +30,8 @@ Source = "https://github.com/Raqbit/pypockethome"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.13.0"
+    "mypy>=1.18.2",
+    "pyright>=1.1.407",
 ]
 
 [tool.hatch.build.targets.sdist]
