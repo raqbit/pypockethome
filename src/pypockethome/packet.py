@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import dataclasses
 import struct
@@ -28,14 +30,6 @@ class Packet(abc.ABC, acp.Abstract):
             self.__class__.__name__, self.ID,
             dataclasses.asdict(self) if dataclasses.is_dataclass(self) else self.__dict__
         )
-
-@dataclass(frozen=True, slots=True, repr=False)
-class UnknownResponse:
-    id_: int
-    data: bytes
-
-    def __repr__(self):
-        return _format_packet_repr(self.__class__.__name__, self.id_, {"length": len(self.data)})
 
 
 class EmptyPacket(Packet, ABC, acp.Abstract):
@@ -130,8 +124,3 @@ class GetRoomMessage(RequestPacket[RoomResponse]):
     @classmethod
     def from_bytes(cls, raw: bytes) -> Self:
         return cls(raw[0])
-
-
-# TODO: Packets should have a client bound / server bound marker, and this should just be a list of all packets
-#   That way the proxy can also make use of this
-ALL_KNOWN_RESPONSE_PACKETS: list[type[Packet]] = [RoomResponse, UsedRoomsResponse, WrongDataResponse]
