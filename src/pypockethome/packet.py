@@ -4,6 +4,7 @@ import struct
 from abc import ABC
 from dataclasses import dataclass
 from typing import Self
+
 import abstractcp as acp
 
 
@@ -23,8 +24,10 @@ class Packet(abc.ABC, acp.Abstract):
     def to_bytes(self) -> bytes: ...
 
     def __repr__(self):
-        return _format_packet_repr(self.__class__.__name__, self.ID, dataclasses.asdict(self))
-
+        return _format_packet_repr(
+            self.__class__.__name__, self.ID,
+            dataclasses.asdict(self) if dataclasses.is_dataclass(self) else self.__dict__
+        )
 
 @dataclass(frozen=True, slots=True, repr=False)
 class UnknownResponse:
@@ -44,17 +47,28 @@ class EmptyPacket(Packet, ABC, acp.Abstract):
         return cls()
 
 
-class RequestPacket[R: Packet | UnknownResponse](Packet, ABC, acp.Abstract): ...
-
-class GetHardwareId(EmptyPacket, RequestPacket[UnknownResponse]):
-    ID = 0x0003
+class RequestPacket[RT: Packet](Packet, ABC, acp.Abstract):
+    response_type: type[RT] = acp.abstract_class_property(type)
 
 
-class GetApSSIDMessage(EmptyPacket, RequestPacket[UnknownResponse]):
-    ID = 0x378C
+# @dataclass(frozen=True, slots=True, repr=False)
+# class GetHardwareId(EmptyPacket, RequestPacket[?]):
+#     ID = 0x0003
+#
+#     response_type = ?
+#
+#
+# @dataclass(frozen=True, slots=True, repr=False)
+# class GetApSSIDMessage(EmptyPacket, RequestPacket[?]):
+#     ID = 0x378C
+#
+#     response_type = ?
 
+
+@dataclass(frozen=True, slots=True, repr=False)
 class WrongDataResponse(EmptyPacket):
     ID = 0x37DD
+
 
 @dataclass(frozen=True, slots=True, repr=False)
 class UsedRoomsResponse(Packet):
@@ -79,9 +93,11 @@ class UsedRoomsResponse(Packet):
         return _format_packet_repr(self.__class__.__name__, self.ID, {"rooms": self.used_ids})
 
 
-
+@dataclass(frozen=True, slots=True, repr=False)
 class GetUsedRoomsMessage(EmptyPacket, RequestPacket[UsedRoomsResponse]):
     ID = 0x8031
+    response_type = UsedRoomsResponse
+
 
 @dataclass(frozen=True, slots=True, repr=False)
 class RoomResponse(Packet):
@@ -104,6 +120,7 @@ class RoomResponse(Packet):
 @dataclass(frozen=True, slots=True)
 class GetRoomMessage(RequestPacket[RoomResponse]):
     ID = 0x8033
+    response_type = RoomResponse
 
     room: int
 
