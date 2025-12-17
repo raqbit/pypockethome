@@ -20,28 +20,30 @@ class Connection:
 
     @typing.overload
     async def send[RT1: Packet, RT2: Packet, RT3: Packet](
-            self, pkt1: RequestPacket[RT1], pkt2: RequestPacket[RT2], pkt3: RequestPacket[RT3], /,
-    ) -> tuple[RT1, RT2, RT3]:
-        ...
+        self,
+        pkt1: RequestPacket[RT1],
+        pkt2: RequestPacket[RT2],
+        pkt3: RequestPacket[RT3],
+        /,
+    ) -> tuple[RT1, RT2, RT3]: ...
 
     @typing.overload
     async def send[RT1: Packet, RT2: Packet](
-            self, pkt1: RequestPacket[RT1], pkt2: RequestPacket[RT2], /
-    ) -> tuple[RT1, RT2]:
-        ...
+        self, pkt1: RequestPacket[RT1], pkt2: RequestPacket[RT2], /
+    ) -> tuple[RT1, RT2]: ...
 
     @typing.overload
-    async def send(self, pkt1: GetUsedRoomsMessage, /) -> tuple[UsedRoomsResponse]:
-        ...
+    async def send(self, pkt1: GetUsedRoomsMessage, /) -> tuple[UsedRoomsResponse]: ...
 
     @typing.overload
-    async def send(self, *packets: RequestPacket[Packet]) -> tuple[Packet, ...]:
-        ...
+    async def send(self, *packets: RequestPacket[Packet]) -> tuple[Packet, ...]: ...
 
     async def send(self, *packets: RequestPacket[Packet]) -> tuple[Packet, ...]:  # type: ignore[misc]
         return tuple([response async for response in self._send(packets)])
 
-    async def _send(self, packets: Iterable[RequestPacket[Packet]]) -> AsyncIterable[Packet]:
+    async def _send(
+        self, packets: Iterable[RequestPacket[Packet]]
+    ) -> AsyncIterable[Packet]:
         for packet in packets:
             await self._write_packet(packet)
             await self._writer.drain()

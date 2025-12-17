@@ -2,7 +2,9 @@ import asyncio
 
 import pypockethome
 from pypockethome import Connection
-from pypockethome.packet import GetUsedRoomsMessage, GetRoomMessage, UnknownResponse, RoomResponse
+from pypockethome.packet import (
+    GetUsedRoomsMessage,
+)
 
 
 async def main():

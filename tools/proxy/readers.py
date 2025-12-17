@@ -3,8 +3,7 @@ from typing import Protocol
 
 
 class Reader(Protocol):
-    async def read_exactly(self, n: int) -> bytes:
-        ...
+    async def read_exactly(self, n: int) -> bytes: ...
 
 
 class BytesReader:
@@ -18,13 +17,14 @@ class BytesReader:
     async def read_exactly(self, n: int) -> bytes:
         idx = self._idx
         self._idx += n
-        return self._buf[idx:idx + n]
+        return self._buf[idx : idx + n]
 
     def reset(self):
         self._idx = 0
 
     def at_eof(self):
         return self._idx >= len(self._buf)
+
 
 class RewindableReader:
     _read: asyncio.StreamReader

@@ -5,9 +5,13 @@ import dataclasses
 import struct
 from abc import ABC
 from dataclasses import dataclass
-from typing import Self
+from typing import Self, cast, TYPE_CHECKING
 
 import abstractcp as acp
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
 
 
 def _format_packet_repr(name: str, id_: int, fields: dict[str, object]) -> str:
@@ -27,8 +31,9 @@ class Packet(abc.ABC, acp.Abstract):
 
     def __repr__(self):
         return _format_packet_repr(
-            self.__class__.__name__, self.ID,
-            dataclasses.asdict(self) if dataclasses.is_dataclass(self) else self.__dict__
+            self.__class__.__name__,
+            self.ID,
+            dataclasses.asdict(cast("DataclassInstance", cast(object, self)))
         )
 
 
@@ -42,7 +47,7 @@ class EmptyPacket(Packet, ABC, acp.Abstract):
 
 
 class RequestPacket[RT: Packet](Packet, ABC, acp.Abstract):
-    response_type: type[RT] = acp.abstract_class_property(type)
+    response_type: type[RT] = cast(type[RT], acp.abstract_class_property(type))
 
 
 # @dataclass(frozen=True, slots=True, repr=False)
@@ -84,7 +89,9 @@ class UsedRoomsResponse(Packet):
         return cls(bitfield)
 
     def __repr__(self):
-        return _format_packet_repr(self.__class__.__name__, self.ID, {"rooms": self.used_ids})
+        return _format_packet_repr(
+            self.__class__.__name__, self.ID, {"rooms": self.used_ids}
+        )
 
 
 @dataclass(frozen=True, slots=True, repr=False)
